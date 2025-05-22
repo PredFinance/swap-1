@@ -2,8 +2,7 @@
 
 import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit"
 import { useDisconnectWallet } from "@mysten/dapp-kit"
-import Link from "next/link"
-import { ChevronDown, LogOut, Copy, ExternalLink, Settings } from "lucide-react"
+import { ChevronDown, LogOut, Copy, ExternalLink } from "lucide-react"
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
 import styles from "./header.module.css"
@@ -91,10 +90,7 @@ export function WalletConnection() {
                   <Copy className={styles.dropdownIcon} />
                   Copy Address
                 </button>
-                 <Link href="/admin" className={styles.adminLink}>
-              <Settings className="w-4 h-4 mr-1" />
-              Admin
-            </Link>
+                
                 <button onClick={viewOnExplorer} className={styles.dropdownItem}>
                   <ExternalLink className={styles.dropdownIcon} />
                   View on Explorer
