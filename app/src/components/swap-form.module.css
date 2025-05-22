@@ -1,0 +1,115 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(20, 20, 20, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.inputWrapper:focus-within {
+  border-color: rgba(240, 185, 11, 0.5);
+}
+
+.input {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  color: white;
+  outline: none;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.tokenBadge {
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #f0b90b, #e6a70a);
+  color: #000;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 0 8px 8px 0;
+}
+
+.arrowContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+
+.arrowIcon {
+  color: #f0b90b;
+  width: 24px;
+  height: 24px;
+}
+
+.warningBox {
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+  border-radius: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.swapButton {
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(90deg, #f0b90b, #e6a70a);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.2s;
+  font-family: var(--font-poetsen-one);
+}
+
+.swapButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(240, 185, 11, 0.3);
+}
+
+.swapButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.swapButton:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}

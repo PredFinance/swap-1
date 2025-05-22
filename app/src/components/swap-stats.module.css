@@ -1,0 +1,66 @@
+.statsContainer {
+  padding: 24px;
+  background: rgba(20, 20, 20, 0.4);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.statsTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.statRow:last-child {
+  border-bottom: none;
+}
+
+.statLabel {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.statValue {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.highlightedFee {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.balances {
+  display: flex;
+  gap: 16px;
+}
+
+.balance {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.symbol {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.infoBox {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(240, 185, 11, 0.1);
+  border-radius: 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  border-left: 3px solid #f0b90b;
+}
