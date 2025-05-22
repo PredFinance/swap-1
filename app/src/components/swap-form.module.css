@@ -77,13 +77,34 @@
   height: 24px;
 }
 
-.warningBox {
+.statusBox {
   padding: 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border-left: 3px solid #ef4444;
+  background: rgba(240, 185, 11, 0.1);
+  border-left: 3px solid #f0b90b;
   border-radius: 8px;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.loadingSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(240, 185, 11, 0.3);
+  border-top: 2px solid #f0b90b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .swapButton {

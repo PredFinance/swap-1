@@ -260,16 +260,16 @@ export function SwapInterface() {
         isLoading={isLoading}
         isConnected={!!currentAccount}
         isLargeSwap={isLargeSwap(amount)}
-        coinASymbol="SWHIT A"
-        coinBSymbol="SWHIT B"
+       coinASymbol="SWHIT Previous"
+          coinBSymbol="SWHIT Main"
         transactionStatus={transactionStatus}
       />
       {currentAccount && (
         <SwapStats
           coinABalance={formatBalance(coinABalance?.totalBalance || "0")}
           coinBBalance={formatBalance(coinBBalance?.totalBalance || "0")}
-          coinASymbol="SWHIT A"
-          coinBSymbol="SWHIT B"
+         coinASymbol="SWHIT Previous"
+          coinBSymbol="SWHIT Main"
           swapFee={`${swapFee} SUI`}
           largeSwapFee={`${LARGE_SWAP_FEE / Number(MIST_PER_SUI)} SUI`}
           currentFee={`${getCurrentFee()} SUI`}

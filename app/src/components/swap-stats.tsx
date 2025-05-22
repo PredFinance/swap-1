@@ -13,19 +13,10 @@ interface SwapStatsProps {
   isLargeSwap: boolean
 }
 
-export function SwapStats({
-  coinABalance,
-  coinBBalance,
-  coinASymbol,
-  coinBSymbol,
-  swapFee,
-  largeSwapFee,
-  currentFee,
-  isLargeSwap,
-}: SwapStatsProps) {
+export function SwapStats({ coinABalance, coinBBalance, coinASymbol, coinBSymbol }: SwapStatsProps) {
   return (
     <div className={styles.statsContainer}>
-      <h2 className={styles.statsTitle}>Swap Information</h2>
+      <h2 className={styles.statsTitle}>Your Portfolio</h2>
 
       <div className={styles.statRow}>
         <span className={styles.statLabel}>Your Balance:</span>
@@ -42,21 +33,6 @@ export function SwapStats({
       </div>
 
       <div className={styles.statRow}>
-        <span className={styles.statLabel}>Standard Swap Fee:</span>
-        <span className={styles.statValue}>{swapFee}</span>
-      </div>
-
-      <div className={styles.statRow}>
-        <span className={styles.statLabel}>Large Swap Fee:</span>
-        <span className={styles.statValue}>{largeSwapFee}</span>
-      </div>
-
-      <div className={styles.statRow}>
-        <span className={styles.statLabel}>Current Fee:</span>
-        <span className={`${styles.statValue} ${isLargeSwap ? styles.highlightedFee : ""}`}>{currentFee}</span>
-      </div>
-
-      <div className={styles.statRow}>
         <span className={styles.statLabel}>Exchange Rate:</span>
         <span className={styles.statValue}>
           1 {coinASymbol} = 1 {coinBSymbol}
@@ -64,10 +40,7 @@ export function SwapStats({
       </div>
 
       <div className={styles.infoBox}>
-        <p>
-          Note: For amounts up to 100k tokens, conversion is 1:1. For amounts over 100k, you will only receive 100k
-          tokens and pay a higher fee (10 SUI).
-        </p>
+        <p>WheatChain provides seamless token swaps with real-time execution on the Sui blockchain.</p>
       </div>
     </div>
   )

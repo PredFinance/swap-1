@@ -13,6 +13,7 @@ interface SwapFormProps {
   isLargeSwap: boolean
   coinASymbol: string
   coinBSymbol: string
+  transactionStatus: string
 }
 
 export function SwapForm({
@@ -25,6 +26,7 @@ export function SwapForm({
   isLargeSwap,
   coinASymbol,
   coinBSymbol,
+  transactionStatus,
 }: SwapFormProps) {
   return (
     <div className={styles.formContainer}>
@@ -60,12 +62,10 @@ export function SwapForm({
         </div>
       </div>
 
-      {isLargeSwap && (
-        <div className={styles.warningBox}>
-          <p>
-            <strong>Large Swap Warning:</strong> For amounts over 100k tokens, you will only receive 100k tokens and pay
-            a higher fee (10 SUI).
-          </p>
+      {transactionStatus && (
+        <div className={styles.statusBox}>
+          <p>{transactionStatus}</p>
+          <div className={styles.loadingSpinner}></div>
         </div>
       )}
 
