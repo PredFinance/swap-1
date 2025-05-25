@@ -94,7 +94,7 @@ export function SwapInterface() {
     try {
       const amountInMist = Math.floor(Number.parseFloat(amount) * Number(MIST_PER_SUI))
 
-      // Find Coin A objects with sufficient balance
+      // Find Coin A objects
       const { data: coins } = await suiClient.getCoins({
         owner: currentAccount.address,
         coinType: SWHIT_A_TYPE,
@@ -107,9 +107,15 @@ export function SwapInterface() {
         return
       }
 
-      // Find a suitable coin with enough balance
-      const suitableCoin = coins.find((coin) => BigInt(coin.balance) >= BigInt(amountInMist))
-      if (!suitableCoin) {
+      // Select enough coins to cover the amount
+      let selectedCoins = []
+      let runningTotal = 0n
+      for (const coin of coins) {
+        selectedCoins.push(coin)
+        runningTotal += BigInt(coin.balance)
+        if (runningTotal >= BigInt(amountInMist)) break
+      }
+      if (runningTotal < BigInt(amountInMist)) {
         toast.error(`Insufficient SWHIT A balance. You need at least ${amount} SWHIT A.`)
         setIsLoading(false)
         setTransactionStatus("")
@@ -131,7 +137,6 @@ export function SwapInterface() {
 
       // Calculate required fee
       const requiredFee = isLargeSwap(amount) ? LARGE_SWAP_FEE : Number(swapFee) * Number(MIST_PER_SUI)
-      // Find a suitable SUI coin with enough balance for the fee + gas
       const GAS_BUDGET = 5000000n // adjust as needed
       const requiredTotal = BigInt(requiredFee) + GAS_BUDGET
       const suitableSuiCoin = suiCoins.find((coin) => BigInt(coin.balance) >= requiredTotal)
@@ -144,38 +149,39 @@ export function SwapInterface() {
 
       setTransactionStatus("Building transaction...")
 
-      // Create transaction using the Transaction class
+      // Build transaction: merge coins if needed, split out exact amount
       const tx = new Transaction()
-      tx.setSender(currentAccount.address) // <--- CRUCIAL: set sender for wallet compatibility
+      tx.setSender(currentAccount.address)
 
-      // If we need to split the coin (if the amount is less than the total balance)
-      if (BigInt(suitableCoin.balance) > BigInt(amountInMist)) {
-        // Split the coin to get the exact amount
-        const [splitCoin] = tx.splitCoins(tx.object(suitableCoin.coinObjectId), [tx.pure.u64(amountInMist)])
-        // Add the swap transaction
-        tx.moveCall({
-          target: `${PACKAGE_ID}::swap::swap`,
-          arguments: [
-            tx.object(SWAP_POOL_ID),
-            tx.object(FEE_COLLECTOR_ID),
-            splitCoin,
-            tx.object(suitableSuiCoin.coinObjectId),
-          ],
-          typeArguments: [SWHIT_A_TYPE, SWHIT_B_TYPE],
-        })
+      // Merge coins if needed
+      let inputCoin
+      if (selectedCoins.length === 1) {
+        inputCoin = tx.object(selectedCoins[0].coinObjectId)
       } else {
-        // Use the entire coin
-        tx.moveCall({
-          target: `${PACKAGE_ID}::swap::swap`,
-          arguments: [
-            tx.object(SWAP_POOL_ID),
-            tx.object(FEE_COLLECTOR_ID),
-            tx.object(suitableCoin.coinObjectId),
-            tx.object(suitableSuiCoin.coinObjectId),
-          ],
-          typeArguments: [SWHIT_A_TYPE, SWHIT_B_TYPE],
-        })
+        inputCoin = tx.object(selectedCoins[0].coinObjectId)
+        const coinsToMerge = selectedCoins.slice(1).map(c => tx.object(c.coinObjectId))
+        tx.mergeCoins(inputCoin, coinsToMerge)
       }
+
+      // Split out the exact amount if needed
+      let swapCoin
+      if (runningTotal > BigInt(amountInMist)) {
+        [swapCoin] = tx.splitCoins(inputCoin, [tx.pure.u64(amountInMist)])
+      } else {
+        swapCoin = inputCoin
+      }
+
+      // Add the swap transaction
+      tx.moveCall({
+        target: `${PACKAGE_ID}::swap::swap`,
+        arguments: [
+          tx.object(SWAP_POOL_ID),
+          tx.object(FEE_COLLECTOR_ID),
+          swapCoin,
+          tx.object(suitableSuiCoin.coinObjectId),
+        ],
+        typeArguments: [SWHIT_A_TYPE, SWHIT_B_TYPE],
+      })
 
       setTransactionStatus("Signing and executing transaction...")
 
