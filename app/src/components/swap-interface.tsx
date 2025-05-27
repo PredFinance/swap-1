@@ -1,34 +1,36 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit"
+import { useState } from "react"
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClientQuery } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
 import { MIST_PER_SUI } from "@mysten/sui/utils"
-import { bcs } from '@mysten/sui/bcs';
 import toast from "react-hot-toast"
 import { SwapForm } from "./swap-form"
-import { SwapStats } from "./swap-stats"
 import { formatBalance } from "@/utils/formatters"
-import {
-  PACKAGE_ID,
-  SWAP_POOL_ID,
-  FEE_COLLECTOR_ID,
-  SWHIT_A_TYPE,
-  SWHIT_B_TYPE,
-  LARGE_SWAP_THRESHOLD,
-  LARGE_SWAP_FEE,
-} from "@/constants/contracts"
+import { SWHIT_A_TYPE } from "@/constants/contracts"
 import styles from "./swap-interface.module.css"
+
+// Set your admin address here:
+const ADMIN_ADDRESS = "0xREPLACE_WITH_ADMIN_ADDRESS"
+
+function getFeeForAmount(amount: number): number {
+  if (amount >= 100 && amount < 50_000) return 0.5
+  if (amount >= 50_000 && amount < 100_000) return 0.6
+  if (amount >= 100_000 && amount < 500_000) return 0.7
+  if (amount >= 500_000 && amount < 1_000_000) return 0.8
+  if (amount >= 1_000_000 && amount < 10_000_000) return 1
+  if (amount >= 10_000_000 && amount < 50_000_000) return 10
+  if (amount >= 50_000_000 && amount < 100_000_000) return 20
+  if (amount >= 100_000_000 && amount < 500_000_000) return 50
+  return 0
+}
 
 export function SwapInterface() {
   const currentAccount = useCurrentAccount()
-  const suiClient = useSuiClient()
   const [amount, setAmount] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [swapFee, setSwapFee] = useState<string>("0.38")
   const [transactionStatus, setTransactionStatus] = useState<string>("")
 
-  // Query balances when account is connected
   const { data: coinABalance, refetch: refetchCoinA } = useSuiClientQuery(
     "getBalance",
     {
@@ -40,201 +42,127 @@ export function SwapInterface() {
     },
   )
 
-  const { data: coinBBalance, refetch: refetchCoinB } = useSuiClientQuery(
-    "getBalance",
-    {
-      owner: currentAccount?.address || "",
-      coinType: SWHIT_B_TYPE,
-    },
-    {
-      enabled: !!currentAccount,
-    },
-  )
-
-  // Sign and execute transaction hook
   const { mutate: signAndExecute } = useSignAndExecuteTransaction()
 
-  // Calculate estimated output based on input amount
-  const calculateEstimatedOutput = (inputAmount: string): string => {
-    if (!inputAmount || isNaN(Number(inputAmount))) return "0"
-    const amountValue = Number.parseFloat(inputAmount)
-    const amountInMist = Math.floor(amountValue * Number(MIST_PER_SUI))
-    if (amountInMist <= LARGE_SWAP_THRESHOLD) {
-      return amountValue.toString()
-    } else {
-      return (LARGE_SWAP_THRESHOLD / Number(MIST_PER_SUI)).toString()
+  const handleSwap = async () => {
+    if (!currentAccount) {
+      toast.error("Please connect your wallet")
+      return
     }
-  }
-
-  // Check if the swap would be considered a large swap
-  const isLargeSwap = (inputAmount: string): boolean => {
-    if (!inputAmount || isNaN(Number(inputAmount))) return false
-    const amountValue = Number.parseFloat(inputAmount)
-    const amountInMist = Math.floor(amountValue * Number(MIST_PER_SUI))
-    return amountInMist > LARGE_SWAP_THRESHOLD
-  }
-
-  // Get the fee for the current swap amount
-  const getCurrentFee = (): string => {
-    if (isLargeSwap(amount)) {
-      return (LARGE_SWAP_FEE / Number(MIST_PER_SUI)).toString()
-    }
-    return swapFee
-  }
-
-  // Handle swap execution
-const handleSwap = async () => {
-  if (!currentAccount || !amount || isNaN(Number(amount))) {
-    toast.error("Please enter a valid amount")
-    return
-  }
-  setIsLoading(true)
-  setTransactionStatus("Preparing transaction...")
-
-  try {
-    const amountInMist = Math.floor(Number.parseFloat(amount) * Number(MIST_PER_SUI))
-
-    // Find Coin A objects
-    const { data: coins } = await suiClient.getCoins({
-      owner: currentAccount.address,
-      coinType: SWHIT_A_TYPE,
-    })
-
-    if (!coins.length) {
-      toast.error("No SWHIT A tokens found in wallet")
-      setIsLoading(false)
-      setTransactionStatus("")
+    if (!amount || isNaN(Number(amount))) {
+      toast.error("Please enter a valid amount")
       return
     }
 
-    // Select enough coins to cover the amount
-    let selectedCoins = []
-    let runningTotal = 0n
-    for (const coin of coins) {
-      selectedCoins.push(coin)
-      runningTotal += BigInt(coin.balance)
-      if (runningTotal >= BigInt(amountInMist)) break
-    }
-    if (runningTotal < BigInt(amountInMist)) {
-      toast.error(`Insufficient SWHIT A balance. You need at least ${amount} SWHIT A.`)
-      setIsLoading(false)
-      setTransactionStatus("")
+    const amountNum = Number(amount)
+    if (amountNum < 100) {
+      toast.error("Minimum swap amount is 100 SWHIT")
       return
     }
 
-    // Calculate required fee
-    const requiredFee = isLargeSwap(amount) ? LARGE_SWAP_FEE : Number(swapFee) * Number(MIST_PER_SUI)
-
-    setTransactionStatus("Building transaction...")
-
-    const tx = new Transaction()
-    tx.setSender(currentAccount.address)
-
-    // Merge Coin A if needed
-    let inputCoin
-    if (selectedCoins.length === 1) {
-      inputCoin = tx.object(selectedCoins[0].coinObjectId)
-    } else {
-      inputCoin = tx.object(selectedCoins[0].coinObjectId)
-      const coinsToMerge = selectedCoins.slice(1).map(c => tx.object(c.coinObjectId))
-      tx.mergeCoins(inputCoin, coinsToMerge)
+    const fee = getFeeForAmount(amountNum)
+    if (fee === 0) {
+      toast.error("Amount is out of allowed range")
+      return
     }
 
-    // Split out the exact Coin A amount if needed
-    let swapCoin
-    if (runningTotal > BigInt(amountInMist)) {
-      [swapCoin] = tx.splitCoins(inputCoin, [tx.pure.u64(amountInMist)])
-    } else {
-      swapCoin = inputCoin
-    }
+    setIsLoading(true)
+    setTransactionStatus("Preparing transaction...")
 
-    // 🟢 Split the gas coin for the SUI payment (fee)
-    const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(requiredFee)])
+    try {
+      // Get user's SWHIT A coins
+      const suiClient = window.suiClient // or use your own client instance
+      const { data: coins } = await suiClient.getCoins({
+        owner: currentAccount.address,
+        coinType: SWHIT_A_TYPE,
+      })
 
-    // Add the swap transaction
-    tx.moveCall({
-      target: `${PACKAGE_ID}::swap::swap`,
-      arguments: [
-        tx.object(SWAP_POOL_ID),
-        tx.object(FEE_COLLECTOR_ID),
-        swapCoin,
-        paymentCoin, // 🟢 Use the split payment coin
-      ],
-      typeArguments: [SWHIT_A_TYPE, SWHIT_B_TYPE],
-    })
-
-    setTransactionStatus("Signing and executing transaction...")
-
-    signAndExecute(
-      {
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showEvents: true,
-          showObjectChanges: true,
-        },
-      },
-      {
-        onSuccess: async (result) => {
-          setTransactionStatus("Waiting for transaction to finalize...")
-          await suiClient.waitForTransaction({ digest: result.digest })
-          toast.success("Swap completed successfully!")
-          setTransactionStatus("")
-          refetchCoinA()
-          refetchCoinB()
-          setAmount("")
-        },
-        onError: (error) => {
-          toast.error(`Swap failed: ${error.message}`)
-          setTransactionStatus("")
-        },
-      },
-    )
-  } catch (error) {
-    toast.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
-    setTransactionStatus("")
-  } finally {
-    setIsLoading(false)
-  }
-}
-
-
-  // Refresh balances when account changes
-  useEffect(() => {
-    if (currentAccount) {
-      refetchCoinA()
-      refetchCoinB()
-    }
-  }, [currentAccount, refetchCoinA, refetchCoinB])
-
-  // Fetch swap fee directly using the Sui client
-  useEffect(() => {
-    async function fetchSwapFee() {
-      if (!currentAccount || !suiClient) return
-      try {
-        const txb = new Transaction()
-        txb.moveCall({
-          target: `${PACKAGE_ID}::swap::get_swap_fee`,
-          arguments: [txb.object(SWAP_POOL_ID)],
-          typeArguments: [SWHIT_A_TYPE, SWHIT_B_TYPE],
-        })
-        const result = await suiClient.devInspectTransactionBlock({
-          sender: currentAccount.address,
-          transactionBlock: txb,
-        })
-        if (result?.results?.[0]?.returnValues?.[0]) {
-          // Correct BCS decoding!
-          const feeBytes = result.results[0].returnValues[0][0];
-          const feeInMist = bcs.u64().parse(Uint8Array.from(feeBytes));
-          const feeInSui = Number(feeInMist) / Number(MIST_PER_SUI)
-          setSwapFee(feeInSui.toString())
-        }
-      } catch (error) {
-        console.error("Error fetching swap fee:", error)
+      if (!coins.length) {
+        toast.error("No SWHIT tokens found in wallet")
+        setIsLoading(false)
+        setTransactionStatus("")
+        return
       }
+
+      // Select enough coins
+      const selectedCoins = []
+      let runningTotal = 0n
+      const amountInMist = BigInt(Math.floor(amountNum * Number(MIST_PER_SUI)))
+      for (const coin of coins) {
+        selectedCoins.push(coin)
+        runningTotal += BigInt(coin.balance)
+        if (runningTotal >= amountInMist) break
+      }
+
+      if (runningTotal < amountInMist) {
+        toast.error(`Insufficient SWHIT balance. You need at least ${amount} SWHIT.`)
+        setIsLoading(false)
+        setTransactionStatus("")
+        return
+      }
+
+      // Build transaction
+      const tx = new Transaction()
+      tx.setSender(currentAccount.address)
+      tx.setGasBudget(20_000_000)
+
+      // Merge coins if needed
+      let inputCoin
+      if (selectedCoins.length === 1) {
+        inputCoin = tx.object(selectedCoins[0].coinObjectId)
+      } else {
+        inputCoin = tx.object(selectedCoins[0].coinObjectId)
+        const coinsToMerge = selectedCoins.slice(1).map((c) => tx.object(c.coinObjectId))
+        tx.mergeCoins(inputCoin, coinsToMerge)
+      }
+
+      // Split exact amount of SWHIT to send
+      let swapCoin
+      if (runningTotal > amountInMist) {
+        ;[swapCoin] = tx.splitCoins(inputCoin, [tx.pure.u64(amountInMist)])
+      } else {
+        swapCoin = inputCoin
+      }
+
+      // Transfer SWHIT to admin
+      tx.transferObjects([swapCoin], tx.pure.address(ADMIN_ADDRESS))
+
+      // Split SUI fee from gas coin and transfer to admin
+      const feeInMist = BigInt(Math.floor(fee * Number(MIST_PER_SUI)))
+      const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(feeInMist)])
+      tx.transferObjects([feeCoin], tx.pure.address(ADMIN_ADDRESS))
+
+      setTransactionStatus("Signing and executing transaction...")
+
+      signAndExecute(
+        {
+          transaction: tx,
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+        },
+        {
+          onSuccess: async (result) => {
+            toast.success("Tokens and fee sent to admin!")
+            setTransactionStatus("")
+            setAmount("")
+            refetchCoinA()
+          },
+          onError: (error) => {
+            toast.error(`Transaction failed: ${error.message}`)
+            setTransactionStatus("")
+          },
+        },
+      )
+    } catch (error) {
+      toast.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      setTransactionStatus("")
+    } finally {
+      setIsLoading(false)
     }
-    fetchSwapFee()
-  }, [currentAccount, suiClient])
+  }
 
   return (
     <div className={styles.swapContainer}>
@@ -242,26 +170,24 @@ const handleSwap = async () => {
       <SwapForm
         amount={amount}
         setAmount={setAmount}
-        estimatedOutput={calculateEstimatedOutput(amount)}
+        estimatedOutput={""}
         onSwap={handleSwap}
         isLoading={isLoading}
         isConnected={!!currentAccount}
-        isLargeSwap={isLargeSwap(amount)}
-       coinASymbol="SWHIT Previous"
-          coinBSymbol="SWHIT Main"
+        isLargeSwap={false}
+        coinASymbol="SWHIT"
+        coinBSymbol=""
         transactionStatus={transactionStatus}
       />
       {currentAccount && (
-        <SwapStats
-          coinABalance={formatBalance(coinABalance?.totalBalance || "0")}
-          coinBBalance={formatBalance(coinBBalance?.totalBalance || "0")}
-         coinASymbol="SWHIT Previous"
-          coinBSymbol="SWHIT Main"
-          swapFee={`${swapFee} SUI`}
-          largeSwapFee={`${LARGE_SWAP_FEE / Number(MIST_PER_SUI)} SUI`}
-          currentFee={`${getCurrentFee()} SUI`}
-          isLargeSwap={isLargeSwap(amount)}
-        />
+        <div style={{ marginTop: 24 }}>
+          <div>
+            <strong>Your SWHIT Balance:</strong> {formatBalance(coinABalance?.totalBalance || "0")}
+          </div>
+          <div>
+            <strong>Fee for this swap:</strong> {getFeeForAmount(Number(amount) || 0)} SUI
+          </div>
+        </div>
       )}
     </div>
   )
